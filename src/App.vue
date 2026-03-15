@@ -1,10 +1,6 @@
 <template>
-  <Canvas />
+  <!--  -->
+  <el-watermark :content="['', '']">
+    <router-view></router-view>
+  </el-watermark>
 </template>
-<script setup>
-import { ref, watch, onMounted } from 'vue'
-import Canvas from './setPage/Canvas.vue';
-</script>
-
-<style>
-</style>

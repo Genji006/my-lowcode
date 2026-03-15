@@ -1,0 +1,108 @@
+.appUserManage-class {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: space-between;
+
+  .appUserManage-left {
+    width: 81.5%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px 0;
+
+    .appUserManage-search {
+      background-color: rgba(253, 253, 251);
+      display: flex;
+      align-items: center; // 垂直居中
+      flex-shrink: 0;
+    }
+    .appUserManage-table {
+      min-height: 0;
+      flex: 1;
+    }
+  }
+
+  .appUserManage-right {
+    width: 18%;
+    height: 100%;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+
+    .appUserManage-top-right {
+      height: 45px;
+      display: flex;
+      align-items: center;
+      margin: 0 10px;
+      border-bottom: 1px solid #bbb;
+    }
+    .permissionBtn-class {
+      text-align: center;
+      background-color: #fff;
+      color: #000;
+      font-weight: 600;
+      flex-shrink: 0;
+      padding: 5px 10px;
+    }
+    .appUserManage-right-bottom {
+      width: 100%;
+      padding: 10px;
+      height: calc(100% - 45px);
+      overflow: auto;
+      box-sizing: border-box;
+    }
+  }
+}
+.batch-add-user-dialog {
+  width: 100%;
+  display: flex;
+  height: 700px;
+  .batchTable {
+    width: calc(100% - 410px);
+    margin-right: 10px;
+    // border: 1px solid gray;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+  .headerTitleIcon {
+    padding: 10px;
+    box-sizing: border-box;
+    color: #000;
+    font-size: 17px;
+    font-weight: bold;
+    border-bottom: 2px solid #e4e7ed;
+    display: flex;
+    align-items: center;
+  }
+}
+.userDialogCss {
+  width: 100%;
+  height: 750px;
+  display: flex;
+  .titleNameHeader {
+    height: 20px;
+    background: #5380fd;
+    width: 3px;
+    border-radius: 3px;
+    margin-right: 10px;
+  }
+  .titleNameText {
+    font-size: 16px;
+    font-weight: 600;
+    color: #000;
+  }
+}
+
+.userInfoCss {
+  display: flex;
+  flex-direction: column;
+  height: 750px;
+  .searchCss {
+    flex-shrink: 0;
+  }
+  .tableCss {
+    flex: 1;
+    height: 10%;
+  }
+}
