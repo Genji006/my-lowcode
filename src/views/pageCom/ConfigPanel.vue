@@ -49,7 +49,7 @@
                 </el-form-item>
 
                 <el-form-item label="抛出时机">
-                    <el-select v-model="activeComp.props.triggerMode" placeholder="请选择">
+                    <el-select v-model="activeComp.props.triggerMode" placeholder="请选择" clearable>
                         <el-option v-for="trigger in activeComp.availableTriggers" :key="trigger.value"
                             :label="trigger.label" :value="trigger.value" />
                     </el-select>
@@ -74,8 +74,11 @@
                         <div v-for="(rule, idx) in getMappingRules(depId)" :key="idx" class="rule-row">
                             <el-input v-model="rule.target" placeholder="参数名(如 id)" size="small" style="width: 40%" />
                             <span class="icon">⬅</span>
-                            <el-input v-model="rule.source" placeholder="路径(如 formData.uid)" size="small"
-                                style="width: 45%" />
+                            <el-select v-model="rule.source" placeholder="请选择或输入路径" size="small" style="width: 45%"
+                                filterable allow-create default-first-option>
+                                <el-option v-for="opt in getSourceOptions(depId)" :key="opt.value" :label="opt.label"
+                                    :value="opt.value" />
+                            </el-select>
                             <el-icon class="del-btn" @click="removeRule(depId, idx)">
                                 <Close />
                             </el-icon>
@@ -100,6 +103,8 @@ import MyQueryFormConfig from './configgers/MyQueryFormConfig.vue';
 import MyTableConfig from './configgers/MyTableConfig.vue';
 import MyChartConfig from './configgers/MyChartConfig.vue';
 import MySelectConfig from './configgers/MySelectConfig.vue'; // 引入新组件
+import MyDatePickerConfig from './configgers/MyDatePickerConfig.vue';
+import MyDynamicTitleConfig from './configgers/MyDynamicTitleConfig.vue';
 
 // 默认配置组件
 const DefaultConfig = { template: '<div></div>' };
@@ -118,6 +123,8 @@ const configMap = {
     'MyPieChart': MyChartConfig,    // 饼图
     'MyRadarChart': MyChartConfig,  // 雷达图
     'MySelect': MySelectConfig,     // 下拉选择器
+    'MyDatePicker': MyDatePickerConfig, // 日期时间选择器
+    'MyDynamicTitle': MyDynamicTitleConfig,
 };
 
 // === 2. 递归查找当前选中的组件 ===
@@ -231,6 +238,45 @@ watch(activeComp, (newVal) => {
         if (!newVal.bindKey) newVal.bindKey = '';
     }
 }, { immediate: true });
+
+const getSourceOptions = (depId) => {
+    const comp = flatComponentList.value.find(c => c.id === depId);
+    if (!comp) return [];
+
+    let options = [];
+    const p = comp.props || {};
+
+    // 1. 如果源组件是表格 (MyTable)
+    if (comp.type === 'MyTable') {
+        // 尝试从视图 datasets 或直接从 columns 中提取表格列
+        const cols = p.columns || (p.datasets && p.datasets[0]?.columns) || [];
+        cols.forEach(col => {
+            if (col.prop) {
+                // 显示为：姓名 (userName)
+                options.push({ label: `${col.label || '列'} (${col.prop})`, value: col.prop });
+            }
+        });
+    }
+    // 2. 如果源组件是日期选择器 (MyDatePicker)
+    else if (comp.type === 'MyDatePicker') {
+        if (p.startFieldName) options.push({ label: `开始时间 (${p.startFieldName})`, value: p.startFieldName });
+        if (p.endFieldName) options.push({ label: `结束时间 (${p.endFieldName})`, value: p.endFieldName });
+        if (p.fieldName) options.push({ label: `单时间字段 (${p.fieldName})`, value: p.fieldName });
+        options.push({ label: '组件默认值 (value)', value: 'value' });
+    }
+    // 3. 通用表单项或下拉框 (MySelect, MyInput 等)
+    else {
+        const key = comp.bindKey || p.fieldName;
+        if (key) {
+            options.push({ label: `绑定字段 (${key})`, value: key });
+        }
+        options.push({ label: '组件默认值 (value)', value: 'value' });
+    }
+
+    // 加入一个根节点选项，方便用户提取整个对象
+    options.push({ label: '获取完整数据对象 (整行/整体)', value: '' });
+    return options;
+};
 </script>
 
 <style scoped>

@@ -2,7 +2,7 @@
     <el-form ref="formRef" :model="formData" :label-width="propsData.labelWidth" class="my-form" @submit.prevent
         @dragover.prevent.stop @drop.stop="onDrop">
         <div class="form-layout-wrapper" :style="layoutStyle" v-if="propsData.children && propsData.children.length > 0">
-            <RecursiveRenderer v-for="child in propsData.children" :key="child.id" :conf="child" :isFlow="true" />
+            <!-- <RecursiveRenderer v-for="child in propsData.children" :key="child.id" :conf="child" :isFlow="true" /> -->
         </div>
 
         <div v-if="!propsData.children || propsData.children.length === 0" class="empty-tip">
@@ -13,7 +13,7 @@
 
 <script setup>
 import { ref, provide, reactive, computed } from 'vue'; // 引入 computed
-import RecursiveRenderer from '../RecursiveRenderer.vue';
+// import RecursiveRenderer from '../RecursiveRenderer.vue';
 import { useDesignStore } from '../demoStore';
 import { createComponent } from '../componentSchema';
 

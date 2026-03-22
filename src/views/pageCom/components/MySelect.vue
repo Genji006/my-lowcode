@@ -10,18 +10,26 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, inject } from 'vue';
-import { mockApi } from '@/api/mock';
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
+
+// 暂时模拟真实接口，防止您直接运行报错
+const executeDatasetApi = async (data) => {
+    console.log("下拉框发起真实请求，参数:", data);
+    return { code: 200, data: { list: [{ label: '动态部门A', value: 'dept_A' }, { label: '动态部门B', value: 'dept_B' }] } };
+}
 
 // 注入预览状态
 const isPreview = inject('isPreview', false);
 
 const props = defineProps({
     conf: Object,      // 组件配置
-    apiParams: Object, // 接收上游参数 (如果此下拉框也依赖别的组件)
+    apiParams: Object, // 接收上游参数 (如果此下拉框依赖别的组件，比如省市级联)
 });
 
 // 定义事件，用于向上层汇报数据变化
-const emit = defineEmits(['updateData']);
+const emit = defineEmits(['update-data']);
 
 const selectedValue = ref('');
 const options = ref([]);
@@ -36,84 +44,123 @@ const wrapperStyle = computed(() => ({
 
 // === 1. 获取数据逻辑 ===
 const fetchData = async () => {
-    const { dataType, options: staticOpts, apiConf, sqlConf, mapping } = props.conf.props;
+    // 获取配置中的 dataType (static / api / sql / script 等)
+    const { dataType, options: staticOpts, mapping, script } = props.conf.props;
 
     // A. 静态数据
-    if (dataType === 'static') {
+    if (dataType === 'static' || !dataType) {
         options.value = staticOpts || [];
         return;
     }
 
-    // B. 动态数据 (API/SQL)
+    // B. 动态数据 (拆分：脚本自定义 vs 接口调用)
     try {
         let rawList = [];
 
-        if (dataType === 'api') {
-            // 这里演示调用 Mock 接口
-            const res = await mockApi.getUsers();
-            rawList = res.data;
+        // 【新增逻辑】：如果选择了 JS 脚本数据源
+        if (dataType === 'script' && script) {
+            const customFunc = new Function('route', 'apiParams', script);
+
+            // 【修改点】：执行时传入真实的对象
+            const scriptResult = await customFunc(route, props.apiParams);
+
+            if (Array.isArray(scriptResult)) {
+                rawList = scriptResult;
+            } else {
+                console.error(`[${props.conf.props.label}] 脚本返回值必须是数组格式!`, scriptResult);
+                rawList = [];
+            }
         }
-        else if (dataType === 'sql') {
-            const res = await mockApi.parseSql({ sql: sqlConf.sql });
-            rawList = res.data;
+        // 【原有逻辑】：如果是 api 或 sql 等接口调用数据源
+        else {
+            const formatQueryParams = (paramsObj) => {
+                if (!paramsObj) return [];
+                return Object.keys(paramsObj).map(key => ({
+                    column: key,
+                    value: paramsObj[key]
+                }));
+            };
+
+            const requestPayload = {
+                componentId: props.conf.componentId || props.conf.id,
+                pageNum: 1,
+                pageSize: 500,
+                queryParams: formatQueryParams(props.apiParams)
+            };
+
+            const res = await executeDatasetApi(requestPayload);
+            if (res && (res.code === 200 || res.code === "200")) {
+                rawList = res.data?.list || res.data?.records || res.data || [];
+            }
         }
 
-        // C. 数据映射
+        // C. 数据映射 (将获取到的 rawList 映射为标准 label 和 value)
         const labelKey = mapping?.label || 'label';
         const valueKey = mapping?.value || 'value';
 
         options.value = rawList.map(item => ({
-            label: item[labelKey],
-            value: item[valueKey],
+            label: item[labelKey] !== undefined ? item[labelKey] : item.label,
+            value: item[valueKey] !== undefined ? item[valueKey] : item.value,
             original: item
         }));
 
     } catch (e) {
-        console.error('MySelect 加载数据失败', e);
+        console.error('MySelect 加载动态数据/执行脚本失败', e);
         options.value = [];
     }
 };
 
 // === 2. 核心联动逻辑 ===
 const handleChange = (val) => {
-    // A. 构造要抛出的数据包
-    // 如果配置了 bindKey (如 deptId)，则以此为 Key
-    // 否则默认以组件 ID 为 Key (PageRender 会自动处理 ID)
+    const payload = { value: val };
 
-    // 关键点：我们抛出一个对象，包含 value
-    // 这样 pageRender 在解析依赖时，会把这个 value 自动传给下游
-    const payload = {
-        value: val,
-        // 如果需要，也可以把 label 或整行数据带上
-        // row: options.value.find(o => o.value === val)?.original 
-    };
-
-    // 如果配置了自定义 bindKey，我们也把它放进去，方便下游用 key 获取
-    if (props.conf.bindKey) {
-        payload[props.conf.bindKey] = val;
+    const fieldKey = props.conf.props.fieldName;
+    if (fieldKey) {
+        payload[fieldKey] = val;
     }
 
-    // B. 发送数据更新事件
     emit('update-data', payload);
 };
 
-const initValue = () => {
-    selectedValue.value = '';
-    handleChange(selectedValue.value);
-};
-
-// 监听配置变化
+// 监听配置变化 (设计器模式下，修改脚本能实时预览)
 watch(() => props.conf.props, () => {
     if (!isPreview) fetchData();
 }, { deep: true });
 
+// 监听上游依赖参数变化
+watch(() => props.apiParams, () => {
+    if (props.conf.props.dataType !== 'static') {
+        selectedValue.value = '';
+        fetchData();
+    }
+}, { deep: true });
+
+// === 3. 默认选中第一项逻辑 ===
+watch(
+    () => options.value,
+    (newOpts) => {
+        if (
+            props.conf.props.defaultFirstOption &&
+            newOpts && newOpts.length > 0 &&
+            (!selectedValue.value)
+        ) {
+            selectedValue.value = newOpts[0].value;
+            handleChange(selectedValue.value);
+        }
+    },
+    { immediate: true, deep: true }
+);
+
 onMounted(() => {
     fetchData();
-    initValue();
 });
 </script>
 
 <style scoped>
+.my-select-wrapper {
+    min-width: 100px;
+}
+
 .select-label {
     margin-right: 8px;
     font-size: 14px;

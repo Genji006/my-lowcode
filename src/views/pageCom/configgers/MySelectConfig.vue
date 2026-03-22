@@ -12,6 +12,9 @@
                 <el-input v-model="activeComp.bindKey" placeholder="存入全局数据的key，如: id" />
                 <div class="tip">其他组件依赖此Key获取数据</div>
             </el-form-item>
+            <el-form-item label="默认选中第一项" title="当下拉框有数据时，自动选中并填入第一个值" label-width="150px">
+                <el-switch v-model="activeComp.props.defaultFirstOption" />
+            </el-form-item>
             <el-row>
                 <el-col :span="12">
                     <el-form-item label="可清空">
@@ -30,7 +33,19 @@
                 <el-radio-button label="static">静态选项</el-radio-button>
                 <el-radio-button label="api">API接口</el-radio-button>
                 <el-radio-button label="sql">SQL查询</el-radio-button>
+                <el-radio-button label="script">JS脚本</el-radio-button>
             </el-radio-group>
+
+            <div v-if="activeComp.props.dataType === 'script'" style="padding: 0 10px 15px 10px;">
+                <div style="font-size: 12px; color: #909399; margin-bottom: 5px; line-height: 1.5;">
+                    支持编写 JS 代码返回下拉选项数组。可使用内置对象: <br />
+                    <code>route</code>: 访问路由参数 (如 route.query.type)<br />
+                    注意：返回的数组可以通过下方【字段映射】绑定 Label 和 Value。
+                </div>
+                <el-input type="textarea" :rows="8" v-model="activeComp.props.script"
+                    placeholder="return [{ label: '测试', value: 1 }];"
+                    style="font-family: monospace; font-size: 13px;" />
+            </div>
 
             <div v-if="activeComp.props.dataType === 'static'">
                 <div v-for="(opt, index) in activeComp.props.options" :key="index" class="option-item">
@@ -78,6 +93,7 @@
 import { computed } from 'vue';
 import { useDesignStore } from '../demoStore';
 import { Delete } from '@element-plus/icons-vue';
+import ScriptEditor from '../components/ScriptEditor.vue';
 
 const props = defineProps({
     activeComp: Object

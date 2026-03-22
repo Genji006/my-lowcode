@@ -94,7 +94,7 @@ const onDrop = (e) => {
 <style scoped>
 .my-container {
     transition: background-color 0.2s;
-    min-height: 50px;
+    min-height: 20px;
     overflow: hidden;
 }
 

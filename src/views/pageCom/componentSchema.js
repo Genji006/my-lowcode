@@ -7,7 +7,7 @@ export const createComponent = (type) => {
         'MyContainer': {
             name: '布局容器',
             // 容器在根画板时的默认样式
-            style: { width: "100%", height: '100%', left: 10, top: 10, backgroundColor: '#efefef', border: '1px dashed #ccc' },
+            style: { width: 100, height: 100, left: 10, top: 10, backgroundColor: '#efefef', border: '1px dashed #ccc' },
             props: {
                 // Flex 布局属性
                 layout: 'flex',
@@ -27,7 +27,7 @@ export const createComponent = (type) => {
         },
         'MyTable': {
             name: '表格',
-            style: { width: "100%", height: 'auto', left: 10, top: 10 },
+            style: { width: 100, height: 50, left: 10, top: 10 },
             props: {
                 datasets: [
                     {
@@ -68,6 +68,8 @@ WHERE status = 1;`, // 这里存 SQL
                 total: 0,              // 总数
                 tableData: [
                 ],
+                // 【新增】用于存放自定义参数的数组
+                customParams: []
             },
             availableTriggers: [
                 { label: '整行点击', value: 'rowClick' },
@@ -77,13 +79,13 @@ WHERE status = 1;`, // 这里存 SQL
         },
         'MyText': {
             name: '文本',
-            style: { width: "20%", height: '10%', left: 0, top: 0, fontSize: 14 },
+            style: { width: 20, height: 10, left: 0, top: 0, fontSize: 14 },
             props: { text: '普通文本', color: '#666', triggerMode: 'change' },
             availableTriggers: [{ label: '输入', value: 'change' }]
         },
         'MyChart': {
             name: '折线图/柱形图',
-            style: { width: "100%", height: '30%', left: 0, top: 0 },
+            style: { width: 50, height: 30, left: 0, top: 0 },
             props: {
                 title: '用户访问统计',
                 chartType: 'bar',    // 默认柱状图
@@ -103,11 +105,29 @@ WHERE status = 1;`, // 这里存 SQL
                     sql: ""
                 },
                 // === 2. 字段映射 ===
-                // 告诉组件：返回的数组里，哪个字段做X轴，哪个做Y轴
-                mapping: {
-                    xField: 'name',  // 维度字段 (Dimension)
-                    yField: 'value'  // 指标字段 (Metric)
-                }
+                // // 告诉组件：返回的数组里，哪个字段做X轴，哪个做Y轴
+                // mapping: {
+                //     xField: 'name',  // 维度字段 (Dimension)
+                //     yField: 'value'  // 指标字段 (Metric)
+                // }
+                designChartConfigList: [
+                    {
+                        field: 'value',       // 默认Y轴字段名
+                        fieldName: '数量',    // 默认Y轴显示名称
+                        chartType: 'value',   // 固定标识：值字段 (Y轴/指标)
+                        dataFormat: '',
+                        barChartType: ''
+                    },
+                    {
+                        field: 'name',        // 默认X轴字段名
+                        fieldName: '日期',    // 默认X轴显示名称
+                        chartType: 'category',// 固定标识：分类字段 (X轴/维度)
+                        dataFormat: '',
+                        barChartType: ''
+                    }
+                ],
+                // 【新增】用于存放自定义参数的数组
+                customParams: []
             },
             bindKey: 'id',
             availableTriggers: [],
@@ -116,7 +136,7 @@ WHERE status = 1;`, // 这里存 SQL
         // === 饼图 ===
         'MyPieChart': {
             name: '饼图',
-            style: { width: "100%", height: '30%', left: 0, top: 0 },
+            style: { width: 100, height: 30, left: 0, top: 0 },
             props: {
                 title: '占比分析',
                 chartType: 'pie',
@@ -140,7 +160,7 @@ WHERE status = 1;`, // 这里存 SQL
         // === 散点图 ===
         'MyScatterChart': {
             name: '散点图',
-            style: { width: "100%", height: '30%', left: 0, top: 0 },
+            style: { width: 100, height: 30, left: 0, top: 0 },
             props: {
                 title: '数据分布',
                 chartType: 'scatter',
@@ -165,7 +185,7 @@ WHERE status = 1;`, // 这里存 SQL
         // === 雷达图 ===
         'MyRadarChart': {
             name: '雷达图',
-            style: { width: "100%", height: '30%', left: 0, top: 0 },
+            style: { width: 100, height: 30, left: 0, top: 0 },
             props: {
                 title: '能力评估',
                 chartType: 'radar',
@@ -212,7 +232,7 @@ WHERE status = 1;`, // 这里存 SQL
         // },
         'MyInput': {
             name: '输入框',
-            style: { width: "20%", height: '10%', position: 'relative' },
+            style: { width: 20, height: 5, position: 'relative' },
             props: {
                 label: '输入框',
                 fieldName: 'username', // 关键：绑定到表单数据的哪个字段
@@ -230,7 +250,7 @@ WHERE status = 1;`, // 这里存 SQL
         'MySelect': {
             name: '下拉选择',
             // 默认高度 auto，宽度 20%
-            style: { width: 20, height: '5%', position: 'relative' },
+            style: { width: 20, height: 5, position: 'relative' },
             props: {
                 label: '部门',
                 placeholder: '请选择部门',
@@ -245,14 +265,35 @@ WHERE status = 1;`, // 这里存 SQL
                 ],
                 apiConf: { url: '', method: 'GET' },
                 sqlConf: { sql: '' },
+                script: `const start = parseInt(apiParams?.yearStart) || new Date().getFullYear() - 3;
+const end = parseInt(apiParams?.yearEnd) || new Date().getFullYear();
+console.log('123456',apiParams)
+const options = [];
+
+// 2. 容错判断：如果起始大于结束，直接返回空或报错选项
+if (start > end) {
+    return [{ label: '时间范围错误', value: '' }];
+}
+
+// 3. 循环生成年份
+for (let year = start; year <= end; year++) {
+    options.push({
+        label: year + '年',
+        value: year.toString() // 保持 value 是字符串，以防后端强校验
+    });
+}
+
+// 4. 返回数组
+return options;`,
                 mapping: { label: 'label', value: 'value' },
-                triggerAction: 'change'
+                triggerAction: 'change',
+                defaultFirstOption: false,
             },
             availableTriggers: [{ label: '选择', value: 'change' }]
         },
         'MyButton': {
             name: '按钮',
-            style: { width: "10%", height: '10%', position: 'relative' },
+            style: { width: 10, height: 5, position: 'relative' },
             props: {
                 text: '提交表单',
                 type: 'primary',
@@ -263,8 +304,7 @@ WHERE status = 1;`, // 这里存 SQL
         },
         'MyQueryForm': {
             name: '查询表单',
-            // 默认宽100%，高度自适应
-            style: { width: "100%", height: 'auto', position: 'relative' },
+            style: { width: 100, height: 5, position: 'relative' },
             props: {
                 // 核心数据模型
                 model: {
@@ -311,6 +351,93 @@ WHERE status = 1;`, // 这里存 SQL
                 slot: '' // 如果有值，将覆盖 items 的渲染
             },
             availableTriggers: [{ label: '查询', value: 'search' }, { label: '重置', value: 'reset' }]
+        },
+        'MyDatePicker': {
+            name: '日期时间',
+            type: 'MyDatePicker',
+            icon: 'date', // 假设左侧菜单的图标名
+            style: { width: 20, height: 5, position: 'relative' },
+            props: {
+                label: '时间选择',
+                fieldName: 'date_1',
+                placeholder: '请选择时间',
+                startPlaceholder: '开始时间',
+                endPlaceholder: '结束时间',
+
+                // 组件类型：date(单日), datetime(单日+时间), daterange(日期范围), datetimerange(时间范围)
+                type: 'date',
+                // 绑定的值格式 (发送给后端的格式)
+                valueFormat: 'YYYY-MM-DD',
+
+                // 数据源类型: static(固定值), api(接口拉取), script(自定义脚本)
+                dataType: 'static',
+
+                // 静态默认值
+                defaultValue: null,
+
+                // 脚本默认值 (默认给个示例脚本)
+                script: `if(route.query.yearStart && route.query.yearEnd) {
+                            return [route.query.yearStart, route.query.yearEnd];
+                        }
+                        return [];`,
+
+                // 接口配置 (复用您之前的体系)
+                apiConf: { url: '', method: 'GET' }
+            },
+            availableTriggers: [{ label: '值改变', value: 'change' }]
+        },
+        'DashBoard': {
+            name: '指标卡片',
+            props: {
+                type: 0,       // 0:普通 1:特殊(是否) 2:特殊(优良等级)
+                indexId: '',
+            },
+            style: { width: 20, height: 20, position: 'relative' },
+        },
+        'calCard': {
+            name: '计算规则卡片',
+            props: {
+            },
+            style: { width: 20, height: 10, position: 'relative' },
+        },
+        'MyTree': {
+            name: '树形选择器',
+            props: {
+                title: '科室',
+                showSearch: true,
+                showCheckbox: true,
+                defaultExpandAll: true,
+                nodeKey: 'ksCode',
+                labelKey: 'ksName',
+                childrenKey: 'childlist',
+            },
+            style: {
+                width: 20,   // 树形面板一般窄一点
+                height: 60, // 通常撑满左侧
+                position: 'relative'
+            }
+        },
+        'MyDynamicTitle': {
+            name: '动态标题',
+            props: {
+                title: '',
+                templateStr: '( {yearStart} )',
+            },
+            style: {
+                width: 15,
+                height: 10,
+                position: 'relative'
+            }
+        },
+        'MySpChart': {
+            name: '指标图表',
+            props: {
+            },
+            style: {
+                width: 100,
+                height: 100,
+                position: 'relative'
+            }
         },
     };
 

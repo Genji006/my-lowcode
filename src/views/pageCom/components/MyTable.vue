@@ -38,9 +38,11 @@
 <script setup>
 import { ref, watch, onMounted, computed, inject } from 'vue';
 import { mockApi } from '@/api/mock';
+import { useRoute } from 'vue-router';
+import { queryDataPageApi } from '@/api/settings';
 
 const isPreview = inject('isPreview', true);
-
+const route = useRoute();
 const props = defineProps({
     // 组件静态配置
     conf: {
@@ -111,18 +113,114 @@ const loadData = async () => {
 
     // B. 预览/运行模式：调用接口
     try {
-        const requestParams = {
-            ...props.apiParams,
-            page: currentPage.value,
-            pageSize: pageSize.value,
-            // 关键：把当前视图的 SQL 或 ID 传给后端
-            // 真实场景下，后端可能根据 viewId 查找预存的 SQL，或者接收加密的 SQL
-            viewId: currentDataset.value.id,
-            sql: currentSql.value
+        const formatQueryParams = (paramsObj) => {
+            if (!paramsObj) return [];
+
+            const resultParams = [];
+            // 获取当前组件配置的 mapping 规则字典 (键为依赖组件的ID，值为规则数组)
+            const mappingDict = props.conf.paramsMapping || {};
+
+            // 遍历所有上游传过来的参数 (paramsObj 的键是上游组件的 ID 或别名)
+            Object.keys(paramsObj).forEach(sourceKey => {
+                const sourceData = paramsObj[sourceKey];
+                // 看看当前组件有没有针对这个 sourceKey (依赖组件) 配置映射规则
+                const rules = mappingDict[sourceKey];
+
+                if (rules && rules.length > 0) {
+                    // --- 情况 1：配置了 Mapping 规则 ---
+                    rules.forEach(rule => {
+                        if (!rule.target) return;
+
+                        let extractedValue = '';
+                        // 1. 如果规则里没填源路径(source)，说明用户想直接把整个数据对象当作字符串发过去
+                        if (!rule.source) {
+                            extractedValue = typeof sourceData === 'object' ? JSON.stringify(sourceData) : sourceData;
+                        }
+                        // 2. 如果规则是简单的键名 (如 deptId)
+                        else if (sourceData && sourceData[rule.source] !== undefined) {
+                            extractedValue = sourceData[rule.source];
+                        }
+                        // 3. (高级进阶) 支持点语法深层提取 (如 user.info.id)
+                        else if (rule.source.includes('.')) {
+                            const keys = rule.source.split('.');
+                            let temp = sourceData;
+                            for (let k of keys) {
+                                if (temp && typeof temp === 'object') {
+                                    temp = temp[k];
+                                } else {
+                                    temp = undefined;
+                                    break;
+                                }
+                            }
+                            if (temp !== undefined) extractedValue = temp;
+                        }
+
+                        // 捞到值后，放入结果数组
+                        resultParams.push({
+                            columnName: rule.target,
+                            columnValue: String(extractedValue)
+                        });
+                    });
+                } else {
+                    // --- 情况 2：没配置 Mapping 规则，走兜底逻辑 ---
+                    // 默认把 sourceKey 当作参数名，把整个对象当成值 (或者提取 value 属性)
+                    if (typeof sourceData === 'object' && sourceData !== null) {
+                        // 如果是个对象，优先提取里面的 'value' 或自己本身的 id，如果都没有，转成 JSON 字符串
+                        const fallbackVal = sourceData.value !== undefined ? sourceData.value : JSON.stringify(sourceData);
+                        resultParams.push({ columnName: sourceKey, columnValue: fallbackVal });
+                    } else {
+                        resultParams.push({ columnName: sourceKey, columnValue: sourceData });
+                    }
+                }
+            });
+
+            return resultParams;
         };
 
-        // 调用 Mock 接口
-        const res = await mockApi.getUsers(requestParams);
+        // 解析自定义参数列表
+        const buildCustomParams = () => {
+            const customParamsList = props.conf.props.customParams || [];
+            const result = [];
+
+            customParamsList.forEach(param => {
+                if (!param.key) return; // 没填键名的跳过
+
+                let calculatedValue = '';
+                if (param.type === 'static') {
+                    calculatedValue = param.value;
+                } else if (param.type === 'script' && param.value) {
+                    try {
+                        const customFunc = new Function('route', param.value);
+                        calculatedValue = customFunc(route);
+                        console.log(`自定义参数[${param.key}]计算结果:`, calculatedValue);
+                        console.log("当前 Vue 路由参数:", route?.query);
+                    } catch (e) {
+                        console.error(`自定义参数[${param.key}]脚本执行报错:`, e);
+                    }
+                }
+
+                result.push({
+                    columnName: param.key,
+                    columnValue: calculatedValue
+                });
+            });
+            return result;
+        };
+
+        // 将上游传来的依赖参数，和自己配置的自定义参数合并
+        const finalQueryParams = [
+            ...formatQueryParams(props.apiParams),
+            ...buildCustomParams()
+        ];
+
+        const requestPayload = {
+            componentId: props.conf.componentId,
+            pageNum: currentPage.value,
+            pageSize: pageSize.value,
+            queryParams: finalQueryParams
+        };
+
+        const res = await queryDataPageApi(requestPayload);
 
         if (res && res.code === 200) {
             let rawList = [];
@@ -205,7 +303,7 @@ const handleSizeChange = (val) => {
     background: #fff;
     height: 100%;
     width: 100%;
-    padding: 10px;
+    /* padding: 10px; */
     box-sizing: border-box;
     display: flex;
     flex-direction: column;

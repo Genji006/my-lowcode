@@ -371,7 +371,8 @@ const isLayerHover = computed(() => {
 .comp-wrapper.layer-hover {
     outline: 1px solid #f56c6c !important;
     background-color: rgba(245, 108, 108, 0.05);
-    z-index: 9999 !important; /* 确保浮在最上层 */
+    z-index: 9999 !important;
+    /* 确保浮在最上层 */
     box-shadow: 0 0 10px rgba(245, 108, 108, 0.5);
 }
 
@@ -473,25 +474,33 @@ const isLayerHover = computed(() => {
 
 .delete-btn {
     position: absolute;
-    top: -10px;
-    right: -10px;
-    width: 20px;
-    height: 20px;
+    /* 改为贴紧右上角内边缘，不使用负数 */
+    top: 0;
+    right: 0;
+    /* 调整尺寸和形状，使其看起来像一个悬浮的小标签 */
+    width: 24px;
+    height: 24px;
     background: #f56c6c;
     color: #fff;
-    border-radius: 50%;
+    /* 仅左下角圆角，贴合右上角 */
+    border-radius: 0 0 0 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 12px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: transform 0.2s;
+    font-size: 14px;
+    /* 给一点轻微的阴影增加立体感 */
+    box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+    z-index: 1002;
+    /* 确保比 resize-handle 高 */
 }
 
 .delete-btn:hover {
     background: #ff4949;
-    transform: scale(1.1);
+    /* 悬停时稍微变大一点点，但不改变位置 */
+    width: 26px;
+    height: 26px;
 }
 
 /* 预览模式下的特殊样式 */

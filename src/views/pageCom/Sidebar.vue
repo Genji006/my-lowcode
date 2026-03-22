@@ -40,7 +40,8 @@ const componentGroups = [
         items: [
             { type: 'MyInput', label: '输入框' },
             { type: 'MySelect', label: '下拉框' },
-            { type: 'MyButton', label: '按钮' }
+            { type: 'MyButton', label: '按钮' },
+            { type: 'MyDatePicker', label: '日期时间选择器' },
         ]
     },
     {
@@ -55,7 +56,12 @@ const componentGroups = [
         title: '模板组件',
         name: 'template',
         items: [
-            { type: 'MyQueryForm', label: '查询表单' }
+            { type: 'MyQueryForm', label: '查询表单' },
+            { type: 'DashBoard', label: '指标卡片' },
+            { type: 'calCard', label: '计算规则卡片' },
+            { type: 'MyTree', label: '科室树状图' },
+            { type: 'MyDynamicTitle', label: '动态标题' },
+            { type: 'MySpChart', label: '指标图表' },
         ]
     },
     {
@@ -63,9 +69,9 @@ const componentGroups = [
         name: 'chart',
         items: [
             { type: 'MyChart', label: '柱形图/折线图' },
-            { type: 'MyPieChart', label: '饼图' },
-            { type: 'MyScatterChart', label: '散点图' },
-            { type: 'MyRadarChart', label: '雷达图' },
+            // { type: 'MyPieChart', label: '饼图' },
+            // { type: 'MyScatterChart', label: '散点图' },
+            // { type: 'MyRadarChart', label: '雷达图' },
         ]
     }
 ];

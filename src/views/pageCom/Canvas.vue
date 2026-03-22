@@ -81,10 +81,16 @@ import MyChart from './components/MyChart.vue';
 import MyText from './components/MyText.vue';
 import MyPieChart from './components/MyPieChart.vue';
 import MyRadarChart from './components/MyRadarChart.vue';
+import MyDatePicker from './components/MyDatePicker.vue';
+import DashBoard from './components/DashBoard.vue';
+import calCard from './components/calCard.vue';
+import MyTree from './components/MyTree.vue';
+import MyDynamicTitle from './components/MyDynamicTitle.vue';
+import MySpChart from './components/mySpChart.vue';
+
 import { useRoute } from 'vue-router';
 import { listAppProjectApi } from "@/api/tool.js";
 import { addPageApi, pageUpdate, pageDetailApi } from '@/api/settings/index';
-
 const store = useDesignStore();
 const showLeft = ref(true);
 const showRight = ref(false);
@@ -122,12 +128,13 @@ const saveConfig = () => {
         // 核心修改 1：平铺处理所有组件时，剥离 children，避免向后端发送无限嵌套的巨型 JSON
         const flattenComponents = (components, parentId = null) => {
             let result = [];
-            components.forEach(component => {
+            components.forEach((component, index) => {
                 // 深拷贝，防止修改 store 原数据
                 let compClone = JSON.parse(JSON.stringify(component));
                 // 记录父节点 ID
                 compClone.parentId = parentId;
-
+                // 记录排序索引
+                compClone.sortIndex = index;
                 // 提取 children 用于递归，然后将当前项的 children 置空
                 const children = (compClone.props && compClone.props.children) ? compClone.props.children : [];
                 if (compClone.props && compClone.props.children) {
@@ -148,32 +155,71 @@ const saveConfig = () => {
         const processComponent = (component) => {
             const config = JSON.parse(JSON.stringify(component));
             const propsData = config.props || config.bind || {};
-            const compType = config.type || config.componentType;
+            console.log("config", config);
+            const isChart = ['MyChart', 'MyPieChart', 'MyScatterChart', 'MyRadarChart'].includes(config.type);
+            let compType = "";
+            if (isChart) {
+                compType = "CHART";
+            } else if (config.type === 'MyTable') {
+                compType = "TABLE";
+            } else if (config.type === 'MyQueryForm') {
+                compType = "searchform";
+            } else {
+                compType = config.type;
+            }
 
             const baseConfig = {
                 componentType: compType,
-                // 因为 flat 过程中已经加上了 parentId，这里 stringify 会把 parentId 一起存入 extendAttr
                 extendAttr: JSON.stringify(config),
             };
 
-            const isTableOrChart = ['MyChart', 'MyPieChart', 'MyScatterChart', 'MyRadarChart'].includes(compType);
-            if (isTableOrChart) {
-                const dataType = propsData.dataType;
-                if (dataType === 'sql' || dataType === 'api') {
+
+            if (compType === 'CHART') {
+                // 1. 处理数据源参数 (designDatasourceParam)
+                // 兼容不同层级的数据源类型字段
+                const dataType = propsData.dataType || (propsData.dataConfig && propsData.dataConfig.dsType);
+
+                if (dataType && (dataType.toLowerCase() === 'sql' || dataType.toLowerCase() === 'api')) {
+                    // 获取配置的语句或接口地址
+                    let bashValue = propsData.sqlConf || propsData.apiConf;
+                    if (!bashValue && propsData.dataConfig) {
+                        bashValue = propsData.dataConfig.dsConfig;
+                    }
+
                     baseConfig.designDatasourceParam = {
-                        datasourceType: dataType,
-                        datasourceConfig: JSON.stringify({ bash: propsData.sqlConf || propsData.apiConf }),
+                        datasourceType: dataType.toUpperCase(), // 后端要求大写 (SQL/API)
+                        datasourceConfig: JSON.stringify({ bash: bashValue || "" }),
                     };
                 }
+
+                // 2. 处理图表特有参数 (designChartConfigParam)
+                // 根据您的组件类型推导 chartType
+                let mappedChartType = "LINE";
+                if (config.type === 'MyPieChart') mappedChartType = "PIE";
+                else if (config.type === 'MyRadarChart') mappedChartType = "RADAR";
+                else if (config.type === 'MyScatterChart') mappedChartType = "SCATTER";
+                else mappedChartType = (propsData.chartType || config.chartType || "LINE").toUpperCase();
+
+                // 获取图表的维度/指标映射列表 (兼容存放在顶层、props 或 dataConfig 中的情况)
+                let chartConfigList = propsData.designChartConfigList || config.designChartConfigList || [];
+                if (!chartConfigList.length && propsData.dataConfig && propsData.dataConfig.designChartConfigList) {
+                    chartConfigList = propsData.dataConfig.designChartConfigList;
+                }
+
+                baseConfig.designChartConfigParam = {
+                    chartType: mappedChartType, // 例如：LINE
+                    chartTitle: propsData.title || config.title || config.name || "图表标题", // 提取标题
+                    designChartConfigList: chartConfigList // 提取维度、指标数组
+                };
             }
 
             // 特别处理MyTable的数据集配置
-            if (compType === 'MyTable' && propsData.datasets && Array.isArray(propsData.datasets)) {
+            if (compType == 'TABLE' && propsData.datasets && Array.isArray(propsData.datasets)) {
                 let datasetConfig
                 propsData.datasets.forEach(dataset => {
                     if (dataset.sql) {
                         datasetConfig = {
-                            datasourceType: 'sql',
+                            datasourceType: 'SQL',
                             datasourceConfig: JSON.stringify({
                                 bash: dataset.sql
                             })
@@ -181,6 +227,7 @@ const saveConfig = () => {
                     }
                 });
                 baseConfig.designDatasourceParam = datasetConfig
+                baseConfig.tableConfigParam = {}
             }
 
             return baseConfig;
@@ -246,7 +293,13 @@ const compMap = {
     'MyText': MyText,
     'MyScatterChart': MyChart,
     'MyPieChart': MyPieChart,
-    'MyRadarChart': MyRadarChart
+    'MyRadarChart': MyRadarChart,
+    'MyDatePicker': MyDatePicker,
+    'DashBoard': DashBoard,
+    'calCard': calCard,
+    'MyTree': MyTree,
+    'MyDynamicTitle': MyDynamicTitle,
+    'MySpChart': MySpChart,
 };
 
 const EditorRenderItem = defineComponent({
@@ -353,6 +406,7 @@ const buildTree = (flatList) => {
             if (!item.extendAttr) return; // 容错处理
 
             let config = JSON.parse(item.extendAttr);
+            config.componentId = item.componentId || item.id;
             config.props = config.props || config.bind || {};
             config.props.children = [];
             // 还原数据源配置 (保留你原有的逻辑)
@@ -397,6 +451,24 @@ const buildTree = (flatList) => {
         }
     });
 
+    const sortTree = (nodes) => {
+        // 根据保存的 sortIndex 升序排列，如果没有记录则默认排在最后
+        nodes.sort((a, b) => {
+            const indexA = a.sortIndex !== undefined ? a.sortIndex : 9999;
+            const indexB = b.sortIndex !== undefined ? b.sortIndex : 9999;
+            return indexA - indexB;
+        });
+
+        // 递归去排里面的子节点
+        nodes.forEach(node => {
+            if (node.props && node.props.children && node.props.children.length > 0) {
+                sortTree(node.props.children);
+            }
+        });
+    };
+
+    sortTree(tree); // 执行排序
+
     return tree;
 };
 
@@ -420,7 +492,7 @@ const pageDetailShowFn = (arr) => {
     }
 
     store.components = buildTree(arr);
-    console.log(11111,store.components)
+    console.log(11111, store.components)
 };
 
 // 页面详情 API 调用

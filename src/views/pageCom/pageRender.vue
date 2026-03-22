@@ -25,6 +25,12 @@ import MyChart from './components/MyChart.vue';
 import MyText from './components/MyText.vue';
 import MyPieChart from './components/MyPieChart.vue';
 import MyRadarChart from './components/MyRadarChart.vue';
+import MyDatePicker from './components/MyDatePicker.vue';
+import DashBoard from './components/DashBoard.vue';
+import calCard from './components/calCard.vue';
+import MyTree from './components/MyTree.vue';
+import MyDynamicTitle from './components/MyDynamicTitle.vue';
+import MySpChart from './components/mySpChart.vue';
 
 import { useRouter } from 'vue-router'; // 引入路由
 
@@ -82,7 +88,13 @@ const compMap = {
     'MyText': MyText,
     'MyScatterChart': MyChart,  // 散点图 -> 复用 MyChart (通过策略模式渲染)
     'MyPieChart': MyPieChart,   // 饼图
-    'MyRadarChart': MyRadarChart // 雷达图
+    'MyRadarChart': MyRadarChart, // 雷达图
+    'MyDatePicker': MyDatePicker,
+    'DashBoard': DashBoard,
+    'calCard': calCard,
+    'MyTree': MyTree,
+    'MyDynamicTitle': MyDynamicTitle,
+    'MySpChart': MySpChart,
 };
 
 const getPathValue = (obj, path) => {

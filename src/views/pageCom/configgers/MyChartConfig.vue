@@ -1,6 +1,6 @@
 <template>
     <div class="chart-config">
-        <el-form label-width="90px" size="small" label-position="right">
+        <el-form label-width="120px" size="small" label-position="right">
 
             <el-divider content-position="left">基础信息</el-divider>
             <el-form-item label="图表标题">
@@ -76,19 +76,73 @@
                 </el-form-item>
             </div>
 
-            <el-divider content-position="left">字段映射</el-divider>
-            <div class="mapping-box">
-                <div class="tip-text" style="margin-bottom: 10px;">告诉组件后端返回数据中对应的字段Key</div>
+            <el-divider content-position="left" v-if="activeComp.props.dataType === 'sql'">字段映射</el-divider>
+            <div class="mapping-box"
+                v-if="activeComp.props.designChartConfigList && activeComp.props.designChartConfigList.length >= 2 && activeComp.props.dataType === 'sql'">
 
-                <el-form-item :label="xFieldLabel">
-                    <el-input v-model="activeComp.props.mapping.xField" placeholder="默认为 name 或 x" />
+                <div class="tip-text" style="margin-bottom: 10px; font-weight: bold; color: #303133;">
+                    1. {{ xFieldLabel }} (分类/X轴)
+                </div>
+                <el-form-item label="字段Key">
+                    <el-input v-model="activeComp.props.designChartConfigList[1].field"
+                        placeholder="数据里的英文Key,如: name" />
+                </el-form-item>
+                <el-form-item label="显示名称">
+                    <el-input v-model="activeComp.props.designChartConfigList[1].fieldName"
+                        placeholder="图表显示的中文名,如: 日期" />
                 </el-form-item>
 
-                <el-form-item :label="yFieldLabel">
-                    <el-input v-model="activeComp.props.mapping.yField" placeholder="默认为 value 或 y" />
+                <el-divider border-style="dashed" style="margin: 15px 0;" />
+
+                <div class="tip-text" style="margin-bottom: 10px; font-weight: bold; color: #303133;">
+                    2. {{ yFieldLabel }} (值/Y轴)
+                </div>
+                <el-form-item label="字段Key">
+                    <el-input v-model="activeComp.props.designChartConfigList[0].field"
+                        placeholder="数据里的英文Key,如: value" />
+                </el-form-item>
+                <el-form-item label="显示名称">
+                    <el-input v-model="activeComp.props.designChartConfigList[0].fieldName"
+                        placeholder="图表显示的中文名,如: 金额" />
                 </el-form-item>
             </div>
 
+            <el-divider content-position="left">自定义请求参数</el-divider>
+            <div style="padding: 0 10px;">
+                <div v-for="(param, index) in activeComp.props.customParams" :key="index"
+                    style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px; border: 1px solid #ebeef5;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 12px; font-weight: bold; color: #606266;">参数 {{ index + 1 }}</span>
+                        <el-button type="danger" link size="small" @click="removeCustomParam(index)">删除</el-button>
+                    </div>
+
+                    <el-row :gutter="10" style="margin-bottom: 8px;">
+                        <el-col :span="12">
+                            <el-input v-model="param.key" placeholder="键名(如: deptId)" />
+                        </el-col>
+                        <el-col :span="12">
+                            <el-select v-model="param.type" placeholder="值类型">
+                                <el-option label="静态固定值" value="static" />
+                                <el-option label="JS 动态脚本" value="script" />
+                            </el-select>
+                        </el-col>
+                    </el-row>
+
+                    <el-input v-if="param.type === 'static'" v-model="param.value" placeholder="输入固定值" />
+                    <div v-if="param.type === 'script'">
+                        <el-input type="textarea" :rows="3" v-model="param.value"
+                            placeholder="例: return route.query.id;" style="font-family: monospace; font-size: 12px;" />
+                        <div style="font-size: 12px; color: #909399; margin-top: 4px;">支持 route 对象获取路由参数</div>
+                    </div>
+                </div>
+
+                <el-button type="primary" plain size="small" style="width: 100%;" @click="addCustomParam">
+                    + 添加参数
+                </el-button>
+                <el-button link type="success" size="small" @click="addStandardParams">
+                    ⚡ 导入通用指标参数
+                </el-button>
+            </div>
         </el-form>
     </div>
 </template>
@@ -155,6 +209,65 @@ const addColor = () => {
 const removeColor = (index) => {
     props.activeComp.props.colors.splice(index, 1);
 };
+
+const addCustomParam = () => {
+    if (!props.activeComp.props.customParams) {
+        props.activeComp.props.customParams = [];
+    }
+    props.activeComp.props.customParams.push({
+        key: '',
+        type: 'static',
+        value: ''
+    });
+};
+
+const removeCustomParam = (index) => {
+    props.activeComp.props.customParams.splice(index, 1);
+};
+
+const addStandardParams = () => {
+    // 确保数组存在
+    if (!props.activeComp.props.customParams) {
+        props.activeComp.props.customParams = [];
+    }
+
+    const standardParamsTemplate = [
+        {
+            key: 'indexDefinitionUuid',
+            type: 'script',
+            value: 'return route.query.indexUuid || "";'
+        },
+        {
+            key: 'newestPatchNo',
+            type: 'script',
+            value: 'return route.query.processingNumber || "";'
+        },
+        {
+            key: 'productUuid',
+            type: 'script',
+            value: 'return sessionStorage.getItem("menuCode") || "";'
+        }
+    ];
+
+    let addedCount = 0;
+
+    // 遍历预设模板，加入到当前图表的自定义参数中
+    standardParamsTemplate.forEach(tpl => {
+        // 防重复检测：如果用户已经手动加过这个 key，就不再重复加了
+        const exists = props.activeComp.props.customParams.find(p => p.key === tpl.key);
+        if (!exists) {
+            props.activeComp.props.customParams.push(tpl);
+            addedCount++;
+        }
+    });
+
+    if (addedCount > 0) {
+        ElMessage.success(`成功导入 ${addedCount} 个通用指标参数！`);
+    } else {
+        ElMessage.warning('通用参数已存在，无需重复导入。');
+    }
+};
+
 </script>
 
 <style scoped>
@@ -201,5 +314,9 @@ const removeColor = (index) => {
 
 :deep(.el-form-item--small.el-form-item) {
     margin-bottom: 14px;
+}
+
+:deep(.el-select__wrapper) {
+    height: 27px !important;
 }
 </style>

@@ -52,7 +52,7 @@
                     </div>
                 </el-form-item>
 
-                <div class="column-list">
+                <!-- <div class="column-list">
                     <div v-for="(col, index) in currentDataset.columns" :key="index" class="col-item">
                         <div class="col-header">
                             <span class="col-title">#{{ index + 1 }} {{ col.label }}</span>
@@ -99,11 +99,123 @@
                     <el-button type="primary" plain size="small" style="width: 100%; margin-top: 10px" @click="addCol">
                         + 添加列
                     </el-button>
+                </div> -->
+                <div class="column-table-box" style="margin-top: 10px;">
+                    <div
+                        style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 13px; font-weight: bold; color: #606266;">数据列配置</span>
+                        <el-button type="primary" plain size="small" @click="addCol" icon="Plus">添加列</el-button>
+                    </div>
+
+                    <el-table :data="currentDataset.columns" row-key="_id" border size="small" style="width: 100%;"
+                        max-height="400px">
+                        <el-table-column type="index" label="#" width="45" align="center" fixed="left" />
+
+                        <el-table-column label="列名 (Label)" min-width="110">
+                            <template #default="{ row }">
+                                <el-input v-model="row.label" placeholder="显示名称" />
+                            </template>
+                        </el-table-column>
+
+                        <el-table-column label="字段Key (Prop)" min-width="130">
+                            <template #default="{ row }">
+                                <el-input v-model="row.prop" placeholder="数据字段" />
+                            </template>
+                        </el-table-column>
+
+                        <el-table-column label="宽度" width="80">
+                            <template #default="{ row }">
+                                <el-input v-model="row.width" placeholder="px" />
+                            </template>
+                        </el-table-column>
+
+                        <el-table-column label="对齐" width="85">
+                            <template #default="{ row }">
+                                <el-select v-model="row.align">
+                                    <el-option label="左" value="left" />
+                                    <el-option label="中" value="center" />
+                                    <el-option label="右" value="right" />
+                                </el-select>
+                            </template>
+                        </el-table-column>
+
+                        <el-table-column label="特性" width="170" align="center">
+                            <template #default="{ row }">
+                                <el-tooltip content="固定列" placement="top" :show-after="500">
+                                    <el-checkbox v-model="row.fixed" label="固定列" />
+                                </el-tooltip>
+                                <el-tooltip content="可点击" placement="top" :show-after="500">
+                                    <el-checkbox v-model="row.clickable" style="margin-left: 8px;" label="可点击" />
+                                </el-tooltip>
+                            </template>
+                        </el-table-column>
+
+                        <el-table-column label="操作" width="120" align="center" fixed="right">
+                            <template #default="{ $index }">
+                                <el-button link type="primary" :disabled="$index === 0" @click="moveCol($index, -1)"
+                                    style="padding: 2px;">
+                                    <el-icon>
+                                        <Top />
+                                    </el-icon>
+                                </el-button>
+                                <el-button link type="primary" :disabled="$index === currentDataset.columns.length - 1"
+                                    @click="moveCol($index, 1)" style="padding: 2px;">
+                                    <el-icon>
+                                        <Bottom />
+                                    </el-icon>
+                                </el-button>
+                                <el-button link type="danger" @click="removeCol($index)"
+                                    style="padding: 2px; margin-left: 5px;">
+                                    <el-icon>
+                                        <Delete />
+                                    </el-icon>
+                                </el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
                 </div>
+
             </div>
 
             <div v-else>
                 <el-empty description="请点击右上角 + 号添加视图" :image-size="60" />
+            </div>
+
+            <el-divider content-position="left">自定义请求参数</el-divider>
+            <div style="padding: 0 10px;">
+                <div v-for="(param, index) in activeComp.props.customParams" :key="index"
+                    style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px; border: 1px solid #ebeef5;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 12px; font-weight: bold; color: #606266;">参数 {{ index + 1 }}</span>
+                        <el-button type="danger" link size="small" @click="removeCustomParam(index)">删除</el-button>
+                    </div>
+
+                    <el-row :gutter="10" style="margin-bottom: 8px;">
+                        <el-col :span="12">
+                            <el-input v-model="param.key" placeholder="键名(如: deptId)" />
+                        </el-col>
+                        <el-col :span="12">
+                            <el-select v-model="param.type" placeholder="值类型">
+                                <el-option label="静态固定值" value="static" />
+                                <el-option label="JS 动态脚本" value="script" />
+                            </el-select>
+                        </el-col>
+                    </el-row>
+
+                    <el-input v-if="param.type === 'static'" v-model="param.value" placeholder="输入固定值" />
+                    <div v-if="param.type === 'script'">
+                        <el-input type="textarea" :rows="3" v-model="param.value"
+                            placeholder="例: return route.query.id;" style="font-family: monospace; font-size: 12px;" />
+                        <div style="font-size: 12px; color: #909399; margin-top: 4px;">支持 route 对象获取路由参数</div>
+                    </div>
+                </div>
+
+                <el-button type="primary" plain size="small" style="width: 100%;" @click="addCustomParam">
+                    + 添加参数
+                </el-button>
+                <el-button link type="success" size="small" @click="addStandardParams">
+                    ⚡ 导入通用指标参数
+                </el-button>
             </div>
 
         </el-form>
@@ -188,12 +300,15 @@ const handleTabsEdit = (targetName, action) => {
     }
 };
 
+const generateColId = () => 'col_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
 // 5. 列操作
 const addCol = () => {
     if (!currentDataset.value) return;
     if (!currentDataset.value.columns) currentDataset.value.columns = [];
 
     currentDataset.value.columns.push({
+        _id: generateColId(), // 【关键新增】唯一ID
         label: '新列',
         prop: 'new_key',
         width: '',
@@ -267,6 +382,7 @@ const cereteCode = async () => {
                 ).then(() => {
                     currentDataset.value.columns = res.map((item) => {
                         return {
+                            _id: generateColId(),
                             label: item.columnLabel || item.columnName,      // 用于表单显示的标签
                             prop: item.columnName,                          // 用于表格绑定的字段名
                             width: item.columnWidth || "",                  // 用于表单和表格的宽度
@@ -291,6 +407,64 @@ const cereteCode = async () => {
         }
     } else {
         ElMessage.warning("请输入SQL");
+    }
+};
+
+const addCustomParam = () => {
+    if (!props.activeComp.props.customParams) {
+        props.activeComp.props.customParams = [];
+    }
+    props.activeComp.props.customParams.push({
+        key: '',
+        type: 'static',
+        value: ''
+    });
+};
+
+const removeCustomParam = (index) => {
+    props.activeComp.props.customParams.splice(index, 1);
+};
+
+const addStandardParams = () => {
+    // 确保数组存在
+    if (!props.activeComp.props.customParams) {
+        props.activeComp.props.customParams = [];
+    }
+
+    const standardParamsTemplate = [
+        {
+            key: 'indexDefinitionUuid',
+            type: 'script',
+            value: 'return route.query.indexUuid || "";'
+        },
+        {
+            key: 'newestPatchNo',
+            type: 'script',
+            value: 'return route.query.processingNumber || "";'
+        },
+        {
+            key: 'productUuid',
+            type: 'script',
+            value: 'return sessionStorage.getItem("menuCode") || "";'
+        }
+    ];
+
+    let addedCount = 0;
+
+    // 遍历预设模板，加入到当前图表的自定义参数中
+    standardParamsTemplate.forEach(tpl => {
+        // 防重复检测：如果用户已经手动加过这个 key，就不再重复加了
+        const exists = props.activeComp.props.customParams.find(p => p.key === tpl.key);
+        if (!exists) {
+            props.activeComp.props.customParams.push(tpl);
+            addedCount++;
+        }
+    });
+
+    if (addedCount > 0) {
+        ElMessage.success(`成功导入 ${addedCount} 个通用指标参数！`);
+    } else {
+        ElMessage.warning('通用参数已存在，无需重复导入。');
     }
 };
 
@@ -319,46 +493,22 @@ const cereteCode = async () => {
     border-radius: 4px;
 }
 
-.column-list {
-    background: #f5f7fa;
-    padding: 10px;
-    border-radius: 4px;
+.column-table-box :deep(.el-input__wrapper),
+.column-table-box :deep(.el-select__wrapper) {
+    box-shadow: none;
+    background-color: transparent;
+    padding: 0 5px;
 }
 
-.col-item {
-    background: #fff;
-    border: 1px solid #ebeef5;
-    border-radius: 4px;
-    margin-bottom: 8px;
-    padding: 8px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+.column-table-box :deep(.el-input__wrapper:hover),
+.column-table-box :deep(.el-input__wrapper.is-focus),
+.column-table-box :deep(.el-select__wrapper:hover),
+.column-table-box :deep(.el-select__wrapper.is-focus) {
+    box-shadow: 0 0 0 1px #409eff inset;
+    background-color: #fff;
 }
 
-.col-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-    border-bottom: 1px dashed #eee;
-    padding-bottom: 5px;
-}
-
-.col-title {
-    font-weight: bold;
-    font-size: 12px;
-    color: #606266;
-}
-
-.col-detail {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.detail-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 5px;
+:deep(.el-select__wrapper) {
+    height: 27px !important;
 }
 </style>
